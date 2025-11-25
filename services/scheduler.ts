@@ -1,3 +1,4 @@
+
 import { ClassGroup, Teacher, Allocation, ScheduleResult, ScheduleItem, TimeSlot } from '../types';
 import { DAYS } from '../constants';
 
@@ -93,6 +94,7 @@ export const generateSmartSchedule = (
       .reduce((sum, a) => sum + a.weeklySessions, 0);
     
     const unavailableSlots = t.unavailableSlots || [];
+    // Count ONLY slots that are within the current school period range
     const relevantUnavailable = unavailableSlots.filter(s => s.periodIndex < periodsPerDay);
     const availableSlotsCount = (DAYS.length * periodsPerDay) - relevantUnavailable.length;
     
@@ -100,7 +102,7 @@ export const generateSmartSchedule = (
       validationConflicts.push(`المدرس ${t.name} تجاوز الحد الأقصى للحصص (${assignedSessions}/${t.maxSessionsPerWeek}).`);
     }
     if (assignedSessions > availableSlotsCount) {
-        validationConflicts.push(`المدرس ${t.name} مطلوب منه ${assignedSessions} حصة، ولكنه متاح فقط في ${availableSlotsCount} حصة.`);
+        validationConflicts.push(`المدرس ${t.name} مطلوب منه ${assignedSessions} حصة، ولكنه متاح فقط في ${availableSlotsCount} حصة (بسبب أوقات العطل).`);
     }
   });
 
@@ -120,13 +122,14 @@ export const generateSmartSchedule = (
   });
 
   // Heuristic Sort: Hardest items first
+  // Teachers with MORE blocked days/slots should be scheduled first because they have fewer options.
   queue.sort((a, b) => {
     const aSlots = a.teacher.unavailableSlots || [];
     const bSlots = b.teacher.unavailableSlots || [];
     const aUnavailable = aSlots.filter(s => s.periodIndex < periodsPerDay).length;
     const bUnavailable = bSlots.filter(s => s.periodIndex < periodsPerDay).length;
     
-    // Primary: Who has fewer slots available?
+    // Primary: Who has fewer slots available? (Higher unavailable count = First)
     const diff = bUnavailable - aUnavailable;
     if (diff !== 0) return diff;
 
