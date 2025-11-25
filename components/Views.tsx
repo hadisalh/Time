@@ -1,8 +1,8 @@
-
 import React, { useRef, useState } from 'react';
 import { ScheduleResult, ClassGroup, Teacher, Subject } from '../types';
 import { DAYS } from '../constants';
 import { Printer, AlertTriangle, CalendarCheck, Users, X, Image as ImageIcon, Download } from 'lucide-react';
+import html2canvas from 'html2canvas';
 
 interface ScheduleViewProps {
   schedule: ScheduleResult;
@@ -30,12 +30,6 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, classes, t
     setIsExporting(true);
 
     try {
-        // @ts-ignore
-        if (typeof window.html2canvas === 'undefined') {
-            alert("جاري تحميل مكتبة الصور، يرجى المحاولة مرة أخرى بعد ثوانٍ...");
-            return;
-        }
-
         // 1. Create a deep clone
         const clone = element.cloneNode(true) as HTMLElement;
 
@@ -96,8 +90,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, classes, t
         await new Promise(resolve => setTimeout(resolve, 500)); 
 
         // 5. Capture
-        // @ts-ignore
-        const canvas = await window.html2canvas(clone, {
+        const canvas = await html2canvas(clone, {
             scale: 2,
             useCORS: true,
             allowTaint: true,
@@ -139,9 +132,6 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, classes, t
     setIsExporting(true);
     
     try {
-         // @ts-ignore
-         if (typeof window.html2canvas === 'undefined') return;
-
          const clone = element.cloneNode(true) as HTMLElement;
          Object.assign(clone.style, {
             position: 'absolute', top: '-10000px', left: '0', zIndex: '-1000',
@@ -163,8 +153,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, classes, t
         document.body.appendChild(clone);
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // @ts-ignore
-        const canvas = await window.html2canvas(clone, {
+        const canvas = await html2canvas(clone, {
             scale: 2, useCORS: true, backgroundColor: '#ffffff',
             width: clone.offsetWidth + 80, height: clone.offsetHeight + 80,
             x: -10, y: -10
