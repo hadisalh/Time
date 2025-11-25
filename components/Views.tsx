@@ -123,15 +123,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, classes, t
   const handleDownloadFullImage = async () => {
     if (!printRef.current) return;
     
-    // We reuse the capture logic but apply different styles for the full page
-    // For full page we want max-content width
-    const element = printRef.current;
-    
     // Custom logic for full page (similar to captureElement but wider)
     if (isExporting) return;
     setIsExporting(true);
     
     try {
+         const element = printRef.current;
          const clone = element.cloneNode(true) as HTMLElement;
          Object.assign(clone.style, {
             position: 'absolute', top: '-10000px', left: '0', zIndex: '-1000',
