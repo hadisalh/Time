@@ -1,4 +1,3 @@
-
 import React, { useRef, useState } from 'react';
 import { ScheduleResult, ClassGroup, Teacher, Subject } from '../types';
 import { DAYS } from '../constants';
@@ -18,96 +17,102 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, classes, t
   const [isExporting, setIsExporting] = useState(false);
 
   const handlePrint = () => {
-    // Set title for PDF file name
     const originalTitle = document.title;
     document.title = `الجدول_المدرسي_${new Date().toISOString().split('T')[0]}`;
     window.print();
     document.title = originalTitle;
   };
 
-  // --- GENERIC IMAGE CAPTURE FUNCTION ---
+  // --- ROBUST IMAGE CAPTURE FUNCTION ---
   const captureElement = async (element: HTMLElement, fileName: string) => {
     if (isExporting) return;
     setIsExporting(true);
 
     try {
-        // 1. Create a deep clone
+        // 1. Create a deep clone to manipulate without affecting UI
         const clone = element.cloneNode(true) as HTMLElement;
 
-        // 2. Setup the clone container to be invisible but renderable
+        // 2. Prepare the clone container
+        // We set it to absolute positioning off-screen, but allow it to expand fully based on content
         Object.assign(clone.style, {
-            position: 'fixed',
-            top: '-10000px',
-            left: '0',
+            position: 'absolute',
+            top: '0',
+            left: '-9999px',
             zIndex: '-1000',
-            width: 'max-content', // Changed from fixed 1000px to max-content to fit full table
-            minWidth: '1000px',
+            width: 'auto',        // Let content dictate width
+            minWidth: 'fit-content', // Ensure it wraps content
+            maxWidth: 'none',     // Remove constraints
             height: 'auto',
             overflow: 'visible',
             backgroundColor: '#ffffff',
-            borderRadius: '16px',
-            padding: '40px', // Increased padding
-            transform: 'none',
+            padding: '40px',
             direction: 'rtl',
-            fontFamily: "'Cairo', sans-serif",
-            margin: '0',
-            border: '1px solid #e2e8f0' // Add border for clean look
+            // CRITICAL FOR ARABIC TEXT:
+            fontFamily: 'Cairo, sans-serif', 
+            letterSpacing: '0px', 
+            fontVariant: 'normal',
+            textRendering: 'geometricPrecision',
+            transform: 'none',
+            margin: '0'
         });
 
-        // 3. Clean up the clone
-        // Remove download buttons from the image
-        const buttons = clone.querySelectorAll('button');
-        buttons.forEach(btn => btn.remove());
-
-        // Fix internal elements
-        const allElements = clone.querySelectorAll('*');
-        allElements.forEach((el: any) => {
-            // Remove Scrollbars
+        // 3. Fix internal elements (Scrollbars, Buttons, Text)
+        const descendants = clone.querySelectorAll('*');
+        descendants.forEach((el: any) => {
+            // Remove scroll limitations to show full table
             const style = window.getComputedStyle(el);
-            if (style.overflow !== 'visible' || style.overflowX !== 'visible' || style.overflowY !== 'visible') {
+            if (el.classList.contains('overflow-x-auto') || style.overflowX === 'auto' || style.overflowX === 'scroll') {
                 el.style.overflow = 'visible';
                 el.style.overflowX = 'visible';
-                el.style.overflowY = 'visible';
-            }
-            if (el.classList.contains('overflow-x-auto')) {
+                el.style.display = 'table'; // Force expansion
                 el.style.width = '100%';
-                el.style.display = 'block';
             }
             
-            // Fix Text Rendering
+            // Remove download/print buttons from the image
+            if (el.tagName === 'BUTTON') {
+                el.style.display = 'none';
+            }
+
+            // Text Rendering Fixes
+            el.style.letterSpacing = '0px';
             el.style.fontVariant = 'normal';
-            el.style.letterSpacing = 'normal';
-            
-            // Fix Table Alignment
-            if (el.tagName === 'TH' || el.tagName === 'TD') {
-                el.style.textAlign = 'center';
-                el.style.verticalAlign = 'middle';
-            }
         });
 
         document.body.appendChild(clone);
 
-        // 4. Wait for font/layout
-        await new Promise(resolve => setTimeout(resolve, 500)); 
+        // 4. Wait for layout to settle
+        await new Promise(resolve => setTimeout(resolve, 300));
 
-        // 5. Capture
+        // 5. Calculate dimensions based on the EXPANDED content
+        const width = clone.scrollWidth + 80; // Add padding buffer
+        const height = clone.scrollHeight + 80;
+
+        // 6. Capture with html2canvas
         const canvas = await html2canvas(clone, {
-            scale: 2,
+            scale: 2, // High resolution
+            width: width,
+            height: height,
+            windowWidth: width,   // Virtual window size matching content
+            windowHeight: height,
             useCORS: true,
-            allowTaint: true,
             backgroundColor: '#ffffff',
-            // Use scrollWidth to get the full expanded width
-            windowWidth: clone.scrollWidth + 100, 
-            width: clone.scrollWidth,
-            height: clone.scrollHeight,
-            x: 0,
-            y: 0,
-            ignoreElements: (element: any) => element.classList.contains('no-print')
+            // Inject styles to override any browser defaults messing up Arabic
+            onclone: (doc) => {
+                const style = doc.createElement('style');
+                style.innerHTML = `
+                    * { 
+                        font-variant: normal !important; 
+                        letter-spacing: 0px !important; 
+                        font-feature-settings: "liga" 1, "dlig" 1 !important;
+                    }
+                `;
+                doc.head.appendChild(style);
+            }
         });
 
         document.body.removeChild(clone);
 
-        // 6. Download
+        // 7. Download
         const image = canvas.toDataURL("image/png");
         const link = document.createElement("a");
         link.href = image;
@@ -123,60 +128,17 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, classes, t
   };
 
   const handleDownloadFullImage = async () => {
-    if (!printRef.current) return;
-    
-    // Custom logic for full page (similar to captureElement but wider)
-    if (isExporting) return;
-    setIsExporting(true);
-    
-    try {
-         const element = printRef.current;
-         const clone = element.cloneNode(true) as HTMLElement;
-         Object.assign(clone.style, {
-            position: 'absolute', top: '-10000px', left: '0', zIndex: '-1000',
-            width: 'max-content', minWidth: '1200px', height: 'auto',
-            overflow: 'visible', backgroundColor: '#ffffff', padding: '40px',
-            transform: 'none', direction: 'rtl', fontFamily: "'Cairo', sans-serif"
-        });
-        
-        // Remove buttons
-        clone.querySelectorAll('button').forEach(b => b.remove());
-
-        // Fix internals
-        clone.querySelectorAll('*').forEach((el: any) => {
-            el.style.overflow = 'visible';
-            if (el.classList.contains('overflow-x-auto')) el.style.width = '100%';
-            el.style.fontVariant = 'normal';
-        });
-
-        document.body.appendChild(clone);
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        const canvas = await html2canvas(clone, {
-            scale: 2, useCORS: true, backgroundColor: '#ffffff',
-            width: clone.scrollWidth + 50, height: clone.scrollHeight + 50,
-            windowWidth: clone.scrollWidth + 100,
-            x: 0, y: 0
-        });
-
-        document.body.removeChild(clone);
-        const image = canvas.toDataURL("image/png");
-        const link = document.createElement("a");
-        link.href = image;
-        link.download = `الجدول_كامل_${new Date().toISOString().split('T')[0]}.png`;
-        link.click();
-    } catch(e) {
-        console.error(e);
-        alert("فشل التصدير");
-    } finally {
-        setIsExporting(false);
-    }
+     if (printRef.current) {
+         captureElement(printRef.current, `الجدول_كامل_${new Date().toISOString().split('T')[0]}`);
+     }
   };
 
   const handleSingleDownload = (id: string, name: string) => {
       const element = document.getElementById(id);
       if (element) {
           captureElement(element, `جدول_${name.replace(/\s/g, '_')}`);
+      } else {
+          alert("تعذر العثور على عنصر الجدول");
       }
   };
 
