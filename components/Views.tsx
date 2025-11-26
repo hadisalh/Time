@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from 'react';
 import { ScheduleResult, ClassGroup, Teacher, Subject } from '../types';
 import { DAYS } from '../constants';
@@ -39,18 +40,18 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, classes, t
             top: '-10000px',
             left: '0',
             zIndex: '-1000',
-            width: '1000px', // Fixed nice width for single card
+            width: 'max-content', // Changed from fixed 1000px to max-content to fit full table
             minWidth: '1000px',
-            maxWidth: '1000px',
             height: 'auto',
             overflow: 'visible',
             backgroundColor: '#ffffff',
             borderRadius: '16px',
-            padding: '20px',
+            padding: '40px', // Increased padding
             transform: 'none',
             direction: 'rtl',
             fontFamily: "'Cairo', sans-serif",
-            margin: '0'
+            margin: '0',
+            border: '1px solid #e2e8f0' // Add border for clean look
         });
 
         // 3. Clean up the clone
@@ -95,11 +96,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, classes, t
             useCORS: true,
             allowTaint: true,
             backgroundColor: '#ffffff',
-            windowWidth: 1200,
-            x: -10,
-            y: -10,
-            width: clone.scrollWidth + 20,
-            height: clone.scrollHeight + 20,
+            // Use scrollWidth to get the full expanded width
+            windowWidth: clone.scrollWidth + 100, 
+            width: clone.scrollWidth,
+            height: clone.scrollHeight,
+            x: 0,
+            y: 0,
             ignoreElements: (element: any) => element.classList.contains('no-print')
         });
 
@@ -152,8 +154,9 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, classes, t
 
         const canvas = await html2canvas(clone, {
             scale: 2, useCORS: true, backgroundColor: '#ffffff',
-            width: clone.offsetWidth + 80, height: clone.offsetHeight + 80,
-            x: -10, y: -10
+            width: clone.scrollWidth + 50, height: clone.scrollHeight + 50,
+            windowWidth: clone.scrollWidth + 100,
+            x: 0, y: 0
         });
 
         document.body.removeChild(clone);
