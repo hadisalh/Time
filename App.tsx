@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { ClassForm, TeacherForm, SubjectForm, AllocationManager, SettingsForm } from './components/Forms';
 import { ScheduleView } from './components/Views';
 import { ClassGroup, Teacher, Subject, Allocation, ScheduleResult } from './types';
 import { generateSmartSchedule } from './services/scheduler';
-import { Calendar, LayoutGrid, BrainCircuit, RefreshCw, Database, Users, BookOpen, Layers, BarChart3, Trash2, Home, Settings as SettingsIcon, CheckCircle2 } from 'lucide-react';
+import { Calendar, LayoutGrid, BrainCircuit, RefreshCw, Database, Users, BookOpen, Layers, BarChart3, Trash2, Home, Settings as SettingsIcon, CheckCircle2, Download as DownloadIcon } from 'lucide-react';
 
 const App = () => {
   // --- Splash Screen State ---
@@ -14,6 +13,9 @@ const App = () => {
   const [activeTab, setActiveTab] = useState<'data' | 'schedule'>('data');
   const [isGenerating, setIsGenerating] = useState(false);
   
+  // --- PWA Install State ---
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+
   const loadState = <T,>(key: string, defaultValue: T, migrator?: (data: any) => T): T => {
       try {
           const item = localStorage.getItem(key);
@@ -60,6 +62,15 @@ const App = () => {
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 3500);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
   useEffect(() => localStorage.setItem('classes', JSON.stringify(classes)), [classes]);
@@ -140,6 +151,16 @@ const App = () => {
       event.target.value = '';
   };
 
+  const handleInstallClick = () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    installPrompt.userChoice.then((choiceResult: any) => {
+      if (choiceResult.outcome === 'accepted') {
+        setInstallPrompt(null);
+      }
+    });
+  };
+
   // --- Splash Screen Component ---
   if (showSplash) {
     return (
@@ -199,7 +220,17 @@ const App = () => {
           </nav>
         </div>
 
-        <div className="mt-auto p-6 relative z-10">
+        <div className="mt-auto p-6 relative z-10 space-y-3">
+            {installPrompt && (
+                <button 
+                    onClick={handleInstallClick} 
+                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-900/20"
+                >
+                    <DownloadIcon size={16} />
+                    <span>تثبيت التطبيق</span>
+                </button>
+            )}
+
             <div className="bg-indigo-900/50 p-4 rounded-2xl border border-indigo-800/50 backdrop-blur-sm">
                 <h3 className="text-xs font-bold text-indigo-300 mb-3 uppercase">إحصائيات سريعة</h3>
                 <div className="grid grid-cols-2 gap-2">
@@ -213,7 +244,7 @@ const App = () => {
                     </div>
                 </div>
             </div>
-            <button onClick={clearData} className="w-full mt-4 text-xs text-red-400 hover:text-red-300 flex items-center justify-center gap-2 py-2 hover:bg-white/5 rounded-lg transition">
+            <button onClick={clearData} className="w-full mt-2 text-xs text-red-400 hover:text-red-300 flex items-center justify-center gap-2 py-2 hover:bg-white/5 rounded-lg transition">
                 <Trash2 size={14} /> تهيئة النظام
             </button>
         </div>
@@ -232,8 +263,19 @@ const App = () => {
                 </div>
                 <h1 className="font-bold text-base">المجدول الذكي</h1>
             </div>
-            <div className="relative z-10 bg-indigo-800/50 px-2 py-0.5 rounded-full text-[10px] border border-indigo-700">
-                v3.0
+            
+            <div className="flex items-center gap-2 relative z-10">
+                {installPrompt && (
+                    <button 
+                        onClick={handleInstallClick}
+                        className="bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 hover:bg-emerald-500/30 transition"
+                    >
+                        <DownloadIcon size={12} /> تثبيت
+                    </button>
+                )}
+                <div className="bg-indigo-800/50 px-2 py-0.5 rounded-full text-[10px] border border-indigo-700">
+                    v3.0
+                </div>
             </div>
         </header>
 
